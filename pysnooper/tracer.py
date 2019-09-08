@@ -234,9 +234,22 @@ class Tracer:
 
     def _wrap_class(self, cls):
         for attr_name, attr in cls.__dict__.items():
-            if inspect.isfunction(attr):
-                setattr(cls, attr_name, self._wrap_function(attr))
+            wrapped = None
+            if isinstance(attr, staticmethod):
+                wrapped = self._wrap_staticmethod(attr)
+            if isinstance(attr, classmethod):
+                wrapped = self._wrap_classmethod(attr)
+            elif inspect.isfunction(attr):
+                wrapped = self._wrap_function(attr)
+            if wrapped is not None:
+                setattr(cls, attr_name, wrapped)
         return cls
+
+    def _wrap_staticmethod(self, method):
+        return staticmethod(self._wrap_function(method.__func__))
+
+    def _wrap_classmethod(self, method):
+        return classmethod(self._wrap_function(method.__func__))
 
     def _wrap_function(self, function):
         self.target_codes.add(function.__code__)

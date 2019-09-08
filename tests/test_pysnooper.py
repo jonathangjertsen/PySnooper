@@ -1483,3 +1483,86 @@ def test_snooping_on_class_does_not_cause_base_class_to_be_snooped():
             ReturnValueEntry('None'),
         )
     )
+
+
+def test_class_with_staticmethod():
+    string_io = io.StringIO()
+
+    @pysnooper.snoop(string_io)
+    class MyClass(object):
+        @staticmethod
+        def static_method(x):
+            return x
+
+    x = 'baba'
+    instance = MyClass()
+
+    instance_call_result = instance.static_method(x)
+    assert instance_call_result == x
+
+    class_call_result = MyClass.static_method(x)
+    assert class_call_result == x
+
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            SourcePathEntry(),
+
+            # From call on instance
+            VariableEntry('x', value_regex="u?'baba'"),
+            CallEntry('def static_method(x):'),
+            LineEntry('return x'),
+            ReturnEntry('return x'),
+            ReturnValueEntry("'baba'"),
+
+            # From call on class
+            VariableEntry('x', value_regex="u?'baba'"),
+            CallEntry('def static_method(x):'),
+            LineEntry('return x'),
+            ReturnEntry('return x'),
+            ReturnValueEntry("'baba'"),
+        )
+    )
+
+
+def test_class_with_classmethod():
+    string_io = io.StringIO()
+
+    @pysnooper.snoop(string_io)
+    class MyClass(object):
+        x = 'baba'
+
+        @classmethod
+        def class_method(cls):
+            return cls.x
+
+    instance = MyClass()
+
+    instance_call_result = instance.class_method()
+    assert instance_call_result == 'baba'
+
+    class_call_result = MyClass.class_method()
+    assert class_call_result == 'baba'
+
+    output = string_io.getvalue()
+    assert_output(
+        output,
+        (
+            SourcePathEntry(),
+
+            # From call on instance
+            VariableEntry('cls', value_regex="u?.*MyClass"),
+            CallEntry('def class_method(cls):'),
+            LineEntry('return cls.x'),
+            ReturnEntry('return cls.x'),
+            ReturnValueEntry("'baba'"),
+
+            # From call on class
+            VariableEntry('cls', value_regex="u?.*MyClass"),
+            CallEntry('def class_method(cls):'),
+            LineEntry('return cls.x'),
+            ReturnEntry('return cls.x'),
+            ReturnValueEntry("'baba'"),
+        )
+    )
